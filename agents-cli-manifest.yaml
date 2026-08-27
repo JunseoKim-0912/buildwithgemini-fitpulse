@@ -1,0 +1,12 @@
+name: fitpulse
+acli_version: 1.3.1
+agent_directory: app
+region: us-east1
+base_template: adk
+generated_at: '2026-08-27T20:45:50.014256+00:00'
+language: python
+create_params:
+  deployment_target: agent_runtime
+  cicd_runner: skip
+  is_a2a: true
+  agent_guidance_filename: GEMINI.md

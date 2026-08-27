@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitPulse - AI Fitness & Analytics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Material+Symbols+Outlined">
+<!-- Chart.js CDN for daily analytics chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-light: #eff6ff;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --success: #10b981;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  header {
+    background: #1e293b;
+    color: #fff;
+    padding: 0.9rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1.25rem; }
+  .brand-icon { color: #38bdf8; font-size: 1.6rem; }
+  .nav-tabs { display: flex; gap: 0.5rem; }
+  .tab-btn {
+    background: rgba(255,255,255,0.1);
+    color: #cbd5e1;
+    border: none;
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover, .tab-btn.active { background: var(--accent); color: #fff; }
+
+  main { flex: 1; overflow-y: auto; position: relative; }
+  .view-pane { display: none; padding: 1.5rem; max-width: 960px; margin: 0 auto; width: 100%; }
+  .view-pane.active { display: block; }
+
+  /* --- Hero & Hub Cards --- */
+  .hero-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: #fff;
+    padding: 1.6rem;
+    border-radius: 14px;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  }
+  .hero-card h1 { margin: 0 0 0.4rem 0; font-size: 1.5rem; }
+  .hero-card p { margin: 0; color: #94a3b8; font-size: 0.95rem; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem; }
+  
+  .section-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .section-card h2 { margin-top: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent); }
+  
+  .form-group { margin-bottom: 0.85rem; }
+  .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.3rem; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  .form-row { display: flex; gap: 0.8rem; }
+  .form-row .form-group { flex: 1; }
+
+  .action-btn {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: background 0.2s;
+  }
+  .action-btn:hover { background: var(--accent-hover); }
+
+  /* In-place Hub Result Container */
+  #hub-result-card {
+    background: #ffffff;
+    border: 2px solid var(--accent-light);
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-top: 1rem;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+    display: none;
+  }
+  #hub-result-card.active { display: block; }
+  .result-header { font-weight: 700; font-size: 1.1rem; color: var(--accent); margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+
+  /* --- Analytics & Charts Page --- */
+  .chart-container {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-top: 0.6rem;
+  }
+  .logs-table th, .logs-table td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  .logs-table th { background: #f1f5f9; color: var(--text-secondary); font-weight: 600; }
+
+  /* --- Chat & Log View --- */
+  #chat-container { display: flex; flex-direction: column; height: calc(100vh - 65px); }
+  #log { flex: 1; overflow-y: auto; padding: 1.2rem; max-width: 800px; width: 100%; margin: 0 auto; }
+  .msg { margin: 0.8rem 0; }
+  .msg.user { text-align: right; }
+  .bubble {
+    display: inline-block;
+    padding: 0.7rem 1rem;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--border);
+    text-align: left;
+    max-width: 85%;
+    white-space: pre-wrap;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .msg.user .bubble { background: var(--accent); color: #fff; border: none; }
+  .bubble.rich { background: transparent; border: none; padding: 0; max-width: 100%; white-space: normal; box-shadow: none; }
+
+  #chat-form-container { border-top: 1px solid var(--border); background: #fff; padding: 1rem; }
+  #chat-form { display: flex; gap: 0.6rem; max-width: 800px; margin: 0 auto; }
+  #chat-input { flex: 1; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
+
+  /* --- A2UI Cards (Basic Catalog v0.8) --- */
+  .a2card { border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 100%; }
+  .a2card + .a2card, .a2col > .a2card { margin-top: 0.8rem; }
+  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .a2row.between { justify-content: space-between; }
+  .a2text { margin: 0; line-height: 1.45; }
+  .a2text.a2-h1 { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+  .a2text.a2-h2 { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+  .a2text.a2-h3 { font-size: 1.1rem; font-weight: 600; }
+  .a2text.a2-h4 { font-size: 1rem; font-weight: 600; }
+  .a2text.a2-caption { font-size: 0.85rem; color: var(--text-secondary); }
+  .a2divider { border: none; border-top: 1px solid var(--border); margin: 0.5rem 0; width: 100%; }
+  .a2img { max-width: 100%; border-radius: 8px; display: block; }
+  .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-size: 1.3rem; line-height: 1; vertical-align: middle; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="material-symbols-outlined brand-icon">fitness_center</span>
+    <span>FitPulse AI</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="tab-start" onclick="switchTab('start')">
+      <span class="material-symbols-outlined">dashboard</span> Start Hub
+    </button>
+    <button class="tab-btn" id="tab-analytics" onclick="switchTab('analytics')">
+      <span class="material-symbols-outlined">analytics</span> Daily Analytics & Logs
+    </button>
+    <button class="tab-btn" id="tab-chat" onclick="switchTab('chat')">
+      <span class="material-symbols-outlined">chat</span> AI Assistant
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- 1. STARTING PAGE HUB -->
+  <div id="view-start" class="view-pane active">
+    <div class="hero-card">
+      <h1>Welcome to FitPulse Assistant</h1>
+      <p>Personalized workout routines, caloric & macro targets, meal plans, and grounded herbal remedies.</p>
+    </div>
+
+    <div class="grid-2">
+      <!-- User Profile & Survey -->
+      <div class="section-card">
+        <h2><span class="material-symbols-outlined">person</span> User Health Survey</h2>
+        <form id="survey-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" id="surv-age" value="30" required>
+            </div>
+            <div class="form-group">
+              <label>Gender</label>
+              <select id="surv-gender">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Weight (kg)</label>
+              <input type="number" step="0.5" id="surv-weight" value="80" required>
+            </div>
+            <div class="form-group">
+              <label>Height (cm)</label>
+              <input type="number" id="surv-height" value="180" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Activity Level</label>
+            <select id="surv-activity">
+              <option value="light">Lightly Active</option>
+              <option value="moderate" selected>Moderately Active</option>
+              <option value="active">Very Active</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Fitness Goal</label>
+            <select id="surv-goal">
+              <option value="maintain" selected>Maintain Weight</option>
+              <option value="lose_weight">Fat Loss / Calorie Deficit</option>
+              <option value="gain_muscle">Muscle Building / Bulk</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Allergies & Dietary Restrictions</label>
+            <input type="text" id="surv-allergies" placeholder="e.g. Peanut allergy, Lactose intolerant, Vegan">
+          </div>
+          <button type="submit" class="action-btn">
+            <span class="material-symbols-outlined">calculate</span> Calculate Metrics (On-Screen)
+          </button>
+        </form>
+      </div>
+
+      <!-- Quick Actions: Meal Plan & Workout Logging -->
+      <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+        <!-- Meal Plan Suggestion -->
+        <div class="section-card">
+          <h2><span class="material-symbols-outlined">restaurant</span> Meal Plan Suggestion</h2>
+          <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:0.8rem;">
+            Generate a personalized daily meal plan respecting remembered allergies & macro goals.
+          </p>
+          <button class="action-btn" onclick="requestMealPlanInPlace()">
+            <span class="material-symbols-outlined">auto_awesome</span> Get Meal Plan (On-Screen)
+          </button>
+        </div>
+
+        <!-- Workout Suggestion & Rep Recording -->
+        <div class="section-card">
+          <h2><span class="material-symbols-outlined">fitness_center</span> Workout & Rep Logger</h2>
+          <form id="workout-form">
+            <div class="form-group">
+              <label>Exercise Name</label>
+              <input type="text" id="work-name" placeholder="e.g. Bench Press, Push-ups, Squats" value="Bench Press" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Sets</label>
+                <input type="number" id="work-sets" value="4" required>
+              </div>
+              <div class="form-group">
+                <label>Reps per Set</label>
+                <input type="number" id="work-reps" value="10" required>
+              </div>
+              <div class="form-group">
+                <label>Weight (kg)</label>
+                <input type="number" id="work-weight" value="60" required>
+              </div>
+            </div>
+            <button type="submit" class="action-btn">
+              <span class="material-symbols-outlined">save</span> Record Workout Log
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-Place Result Display Card (Renders right on the Start Hub screen) -->
+    <div id="hub-result-card">
+      <div class="result-header">
+        <span class="material-symbols-outlined">task_alt</span>
+        <span id="result-header-title">Results & Guidance</span>
+      </div>
+      <div id="hub-result-body"></div>
+    </div>
+  </div>
+
+  <!-- 2. ANALYTICS & DAILY CHARTS PAGE -->
+  <div id="view-analytics" class="view-pane">
+    <div class="hero-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+      <h1>Daily Fitness Analytics & History</h1>
+      <p>Track your daily workout volume, calories consumed, and meal logs saved to Firestore.</p>
+    </div>
+
+    <div class="chart-container">
+      <h2 style="margin-top:0; font-size:1.15rem; color:var(--accent);">
+        <span class="material-symbols-outlined">show_chart</span> Daily Calorie & Workout Volume Trends
+      </h2>
+      <canvas id="dailyChart" style="max-height: 320px;"></canvas>
+    </div>
+
+    <div class="grid-2">
+      <!-- Recent Workout Logs Table -->
+      <div class="section-card">
+        <h2><span class="material-symbols-outlined">fitness_center</span> Recent Workout Logs</h2>
+        <div style="overflow-x: auto;">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Exercise</th>
+                <th>Sets x Reps</th>
+                <th>Weight</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="workout-logs-body">
+              <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Loading workout logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Recent Meal Logs Table -->
+      <div class="section-card">
+        <h2><span class="material-symbols-outlined">restaurant</span> Recent Meal Logs</h2>
+        <div style="overflow-x: auto;">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Food Items</th>
+                <th>Calories</th>
+                <th>Macros (P/C/F)</th>
+              </tr>
+            </thead>
+            <tbody id="meal-logs-body">
+              <tr><td colspan="4" style="text-align:center; color:#94a3b8;">Loading meal logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. LIVE CHAT VIEW -->
+  <div id="view-chat" class="view-pane" style="padding: 0;">
+    <div id="chat-container">
+      <div id="log"></div>
+      <div id="chat-form-container">
+        <form id="chat-form">
+          <input id="chat-input" placeholder="Ask FitPulse about workouts, macros, meal plans, or natural herbs…" autocomplete="off">
+          <button class="action-btn" style="width: auto;">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const viewStart = document.getElementById("view-start");
+const viewAnalytics = document.getElementById("view-analytics");
+const viewChat = document.getElementById("view-chat");
+
+const tabStart = document.getElementById("tab-start");
+const tabAnalytics = document.getElementById("tab-analytics");
+const tabChat = document.getElementById("tab-chat");
+
+const log = document.getElementById("log");
+const chatForm = document.getElementById("chat-form");
+const chatInput = document.getElementById("chat-input");
+
+const hubResultCard = document.getElementById("hub-result-card");
+const hubResultBody = document.getElementById("hub-result-body");
+const resultHeaderTitle = document.getElementById("result-header-title");
+
+let dailyChartInstance = null;
+
+function switchTab(tab) {
+  [viewStart, viewAnalytics, viewChat].forEach(v => v.classList.remove("active"));
+  [tabStart, tabAnalytics, tabChat].forEach(t => t.classList.remove("active"));
+
+  if (tab === 'start') {
+    viewStart.classList.add("active");
+    tabStart.classList.add("active");
+  } else if (tab === 'analytics') {
+    viewAnalytics.classList.add("active");
+    tabAnalytics.classList.add("active");
+    loadAnalyticsData();
+  } else {
+    viewChat.classList.add("active");
+    tabChat.classList.add("active");
+  }
+}
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function bubble(who) {
+  const m = el("div", "msg " + who);
+  const b = el("div", "bubble");
+  m.appendChild(b); log.appendChild(m); log.scrollTop = log.scrollHeight;
+  return b;
+}
+
+/* --- A2UI Mini-Renderer (Basic Catalog v0.8) --- */
+function boundStr(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v.literalString === "string") return v.literalString;
+  return "";
+}
+
+function childIds(props) {
+  const ids = [];
+  if (props && typeof props.child === "string") ids.push(props.child);
+  const ch = props && props.children;
+  if (ch && Array.isArray(ch.explicitList)) for (const c of ch.explicitList) if (typeof c === "string") ids.push(c);
+  return ids;
+}
+
+function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
+
+function buildNode(id, comps, seen) {
+  if (!id || seen.has(id)) return null;
+  seen.add(id);
+  const spec = comps[id];
+  if (!spec || typeof spec !== "object") return null;
+  const type = Object.keys(spec)[0];
+  const props = spec[type] || {};
+  const kids = () => childIds(props).map(cid => buildNode(cid, comps, seen)).filter(Boolean);
+
+  switch (type) {
+    case "Card": {
+      const d = el("div", "a2card"); kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Column":
+    case "List": {
+      const horizontal = type === "List" && props.direction === "horizontal";
+      const d = el("div", horizontal ? "a2row" : "a2col"); kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Row": {
+      const d = el("div", "a2row" + (props.distribution === "spaceBetween" ? " between" : ""));
+      kids().forEach(n => d.appendChild(n)); return d;
+    }
+    case "Text": {
+      const t = el("div", "a2text");
+      const hint = String(props.usageHint || "body").toLowerCase();
+      if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(hint)) t.classList.add("a2-" + hint);
+      else if (hint === "caption") t.classList.add("a2-caption");
+      t.textContent = boundStr(props.text);
+      return t;
+    }
+    case "Divider":
+      return el("hr", "a2divider");
+    case "Image": {
+      const src = boundStr(props.url || props.src);
+      if (!/^https?:\/\//i.test(src)) return null;
+      const img = el("img", "a2img"); img.src = src; img.alt = boundStr(props.alt) || ""; return img;
+    }
+    case "Icon": {
+      const s = el("span", "material-symbols-outlined"); s.textContent = iconName(boundStr(props.name) || props.name); return s;
+    }
+    default:
+      return null;
+  }
+}
+
+function renderSurface(messages, container) {
+  const comps = {};
+  const roots = [];
+  for (const m of messages) {
+    if (m.beginRendering && typeof m.beginRendering.root === "string") roots.push(m.beginRendering.root);
+    const su = m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.id && c.component) comps[c.id] = c.component;
+  }
+  let rootIds = roots.filter(r => comps[r]);
+  if (rootIds.length === 0) {
+    const referenced = new Set();
+    for (const id in comps) { const spec = comps[id]; childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c)); }
+    rootIds = Object.keys(comps).filter(id => !referenced.has(id));
+  }
+  let drew = false;
+  for (const rid of rootIds) { const node = buildNode(rid, comps, new Set()); if (node) { container.appendChild(node); drew = true; } }
+  return drew;
+}
+
+function flattenText(messages) {
+  const out = [];
+  for (const m of messages) {
+    const su = m.surfaceUpdate;
+    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
+  }
+  return out.join("\n").trim();
+}
+
+function renderReply(b, parts) {
+  b.textContent = "";
+  const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+  const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+
+  const textStr = texts.join("\n").trim();
+  if (textStr) b.appendChild(el("div", null, textStr));
+
+  if (a2ui.length) {
+    b.classList.add("rich");
+    if (!renderSurface(a2ui, b)) b.appendChild(el("div", null, flattenText(a2ui) || "(no card content)"));
+  }
+  if (!b.childNodes.length) b.textContent = "(no response)";
+  log.scrollTop = log.scrollHeight;
+}
+
+/* --- In-Place Display Handler for Start Hub --- */
+async function sendInPlaceMessage(promptText, title) {
+  resultHeaderTitle.textContent = title || "Results & Guidance";
+  hubResultCard.classList.add("active");
+  hubResultBody.textContent = "Processing calculation with FitPulse AI...";
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: promptText })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { throw new Error(`Server returned non-JSON (HTTP ${res.status}). ${raw.slice(0, 300)}`); }
+    
+    hubResultBody.textContent = "";
+    const parts = data.parts || [];
+    const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
+    const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
+
+    if (texts.join("\n").trim()) {
+      const d = el("div", null, texts.join("\n").trim());
+      d.style.marginBottom = "0.8rem";
+      hubResultBody.appendChild(d);
+    }
+    if (a2ui.length) {
+      if (!renderSurface(a2ui, hubResultBody)) {
+        hubResultBody.appendChild(el("div", null, flattenText(a2ui) || "(no card content)"));
+      }
+    }
+    if (!hubResultBody.childNodes.length) hubResultBody.textContent = "(No response returned)";
+  } catch (e) {
+    hubResultBody.textContent = "Error: " + e.message;
+  }
+}
+
+async function sendChatMessage(promptText) {
+  switchTab('chat');
+  bubble("user").textContent = promptText;
+  const b = bubble("agent"); b.textContent = "…";
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: promptText })
+    });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); }
+    catch { throw new Error(`Server returned non-JSON (HTTP ${res.status}). ${raw.slice(0, 300)}`); }
+    renderReply(b, data.parts || []);
+  } catch (e) {
+    b.textContent = "Error: " + e.message;
+  }
+}
+
+/* Chat Form Listener */
+chatForm.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+  sendChatMessage(text);
+});
+
+/* Survey Form Handler -> Display ON SCREEN */
+document.getElementById("survey-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const age = document.getElementById("surv-age").value;
+  const gender = document.getElementById("surv-gender").value;
+  const weight = document.getElementById("surv-weight").value;
+  const height = document.getElementById("surv-height").value;
+  const activity = document.getElementById("surv-activity").value;
+  const goal = document.getElementById("surv-goal").value;
+  const allergies = document.getElementById("surv-allergies").value.trim();
+
+  let prompt = `Please calculate my fitness metrics and daily calories for a ${age}yo ${gender}, weight ${weight}kg, height ${height}cm, activity level ${activity}, goal ${goal}.`;
+  if (allergies) {
+    prompt += ` Please remember that I have the following allergies/dietary restrictions: ${allergies}.`;
+  }
+  sendInPlaceMessage(prompt, "Health Metrics & Calorie Calculation Results");
+});
+
+/* Meal Plan Request Handler -> Display ON SCREEN */
+function requestMealPlanInPlace() {
+  sendInPlaceMessage("Suggest a comprehensive daily meal plan based on my health profile and remembered dietary restrictions/allergies.", "Personalized Daily Meal Plan");
+}
+
+/* Workout Form Handler -> Display ON SCREEN */
+document.getElementById("workout-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const name = document.getElementById("work-name").value;
+  const sets = document.getElementById("work-sets").value;
+  const reps = document.getElementById("work-reps").value;
+  const weight = document.getElementById("work-weight").value;
+
+  const prompt = `Please log my workout session: I completed ${sets} sets of ${reps} reps of ${name} with ${weight}kg.`;
+  sendInPlaceMessage(prompt, "Workout Session Recorded");
+});
+
+/* --- Analytics & Daily Chart Loader --- */
+async function loadAnalyticsData() {
+  const wBody = document.getElementById("workout-logs-body");
+  const mBody = document.getElementById("meal-logs-body");
+  wBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading workouts...</td></tr>';
+  mBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Loading meals...</td></tr>';
+
+  try {
+    const res = await fetch("/logs");
+    const data = await res.json();
+    if (data.status !== "success") throw new Error(data.message || "Failed to load logs");
+
+    const workouts = data.workouts || [];
+    const meals = data.meals || [];
+
+    // Render Workout Logs Table
+    if (workouts.length === 0) {
+      wBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No recorded workout logs found.</td></tr>';
+    } else {
+      wBody.innerHTML = workouts.map(w => `
+        <tr>
+          <td><strong>${w.exercise_name || 'Workout'}</strong></td>
+          <td>${w.sets || 0} sets x ${w.reps || 0} reps</td>
+          <td>${w.weight_kg || 0} kg</td>
+          <td>${w.notes || 'None'}</td>
+        </tr>
+      `).join("");
+    }
+
+    // Render Meal Logs Table
+    if (meals.length === 0) {
+      mBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#94a3b8;">No recorded meal logs found.</td></tr>';
+    } else {
+      mBody.innerHTML = meals.map(m => `
+        <tr>
+          <td><strong>${m.meal_type || 'Meal'}</strong></td>
+          <td>${m.food_items || 'Food items'}</td>
+          <td><span style="color:var(--accent); font-weight:600;">${m.calories || 0} kcal</span></td>
+          <td>P: ${m.protein_g || 0}g | C: ${m.carbs_g || 0}g | F: ${m.fat_g || 0}g</td>
+        </tr>
+      `).join("");
+    }
+
+    // Process Data for Daily Analytics Chart
+    renderDailyChart(workouts, meals);
+  } catch (err) {
+    wBody.innerHTML = `<tr><td colspan="4" style="color:red;">Error: ${err.message}</td></tr>`;
+    mBody.innerHTML = `<tr><td colspan="4" style="color:red;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderDailyChart(workouts, meals) {
+  const dailyData = {};
+
+  meals.forEach(m => {
+    const dateStr = (m.timestamp || new Date().toISOString()).slice(0, 10);
+    if (!dailyData[dateStr]) dailyData[dateStr] = { calories: 0, reps: 0 };
+    dailyData[dateStr].calories += (m.calories || 0);
+  });
+
+  workouts.forEach(w => {
+    const dateStr = (w.timestamp || new Date().toISOString()).slice(0, 10);
+    if (!dailyData[dateStr]) dailyData[dateStr] = { calories: 0, reps: 0 };
+    dailyData[dateStr].reps += ((w.sets || 1) * (w.reps || 0));
+  });
+
+  const dates = Object.keys(dailyData).sort();
+  if (dates.length === 0) {
+    dates.push(new Date().toISOString().slice(0, 10));
+    dailyData[dates[0]] = { calories: 0, reps: 0 };
+  }
+
+  const caloriesList = dates.map(d => dailyData[d].calories);
+  const repsList = dates.map(d => dailyData[d].reps);
+
+  const ctx = document.getElementById("dailyChart").getContext("2d");
+  if (dailyChartInstance) dailyChartInstance.destroy();
+
+  dailyChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: "Daily Calories Consumed (kcal)",
+          data: caloriesList,
+          backgroundColor: "rgba(37, 99, 235, 0.7)",
+          borderColor: "rgba(37, 99, 235, 1)",
+          borderWidth: 1,
+          yAxisID: "y"
+        },
+        {
+          label: "Total Workout Reps",
+          data: repsList,
+          backgroundColor: "rgba(16, 185, 129, 0.7)",
+          borderColor: "rgba(16, 185, 129, 1)",
+          borderWidth: 1,
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          type: "linear",
+          display: true,
+          position: "left",
+          title: { display: true, text: "Calories (kcal)" }
+        },
+        y1: {
+          type: "linear",
+          display: true,
+          position: "right",
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: "Total Reps" }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
